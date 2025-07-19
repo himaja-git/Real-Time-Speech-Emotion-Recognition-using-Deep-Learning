@@ -1,0 +1,33 @@
+import streamlit as st
+import sounddevice as sd
+import numpy as np
+import librosa
+import tensorflow as tf
+from features_extraction import extract_features
+import scipy.io.wavfile as wav
+import os
+import wavio
+
+# Load model and config
+model = tf.keras.models.load_model('model/emotion_model.h5')
+EMOTIONS = ['Neutral 😐', 'Happy 😀', 'Sad 😢', 'Angry 😠']
+
+st.title("🎙️ Real-Time Speech Emotion Recognition")
+
+duration = st.slider("Recording Duration (seconds)", 1, 10, 3)
+if st.button("🎤 Record & Detect Emotion"):
+    st.write("Recording...")
+    fs = 44100
+    recording = sd.rec(int(duration * fs), samplerate=fs, channels=1)
+    sd.wait()
+
+    wavio.write("temp.wav", recording, fs, sampwidth=2)
+
+    features = extract_features("temp.wav")
+    if features is not None:
+        features = features.reshape(1, 40, 174, 1)
+        prediction = model.predict(features)
+        predicted_emotion = EMOTIONS[np.argmax(prediction)]
+        st.success(f"Detected Emotion: **{predicted_emotion}**")
+    else:
+        st.error("Could not process the audio.")
